@@ -9,7 +9,11 @@ const {typeDefs,resolvers} =require('./graphql/index.js')
 const app = express()
 dotenv.config()
 
-app.use(cors())
+// app.use(cors())
+app.use(cors({
+    origin:"http://localhost:5173",
+    credentials:true
+}))
 
 app.use(express.json())
 app.use(cookieparser())
@@ -19,6 +23,7 @@ const serverStart = async()=>{
         const server = new ApolloServer({
             typeDefs,
             resolvers,
+            context:({req,res})=>({req,res})
         })
 
         await server.start()

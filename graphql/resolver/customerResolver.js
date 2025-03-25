@@ -1,4 +1,7 @@
 const pool = require('../../db/dbconfig');
+const authMiddleware = require('../../middleware/authMiddleware.js');
+const generateToken = require('../../utils/generateJwtToken');
+const setCookie = require('../../utils/setCookie.js');
 
 
 const customerResolver = {
@@ -32,21 +35,22 @@ const customerResolver = {
                 throw new Error(err.message);
             }
         },
-        login: async (_, { email, password, login_type }) => {
+        login: async (_, { email, password, login_type }, { res }) => {
             try {
                 console.log(">>>>>", email, password, login_type);
 
                 const tableName = login_type === "Merchant" ? "merchant" : "customer";
-                const res = await pool.query(
+                const responce = await pool.query(
                     `SELECT * FROM ${tableName} WHERE email = $1`,
                     [email]
                 );
 
-                if (res.rowCount === 0) {
+
+                if (responce.rowCount === 0) {
                     throw new Error("User not found");
                 }
 
-                const user = res.rows[0];
+                const user = responce.rows[0];
 
                 if (user.password !== password) {
                     throw new Error("Invalid credentials");
@@ -54,12 +58,59 @@ const customerResolver = {
 
                 console.log("User logged in successfully:", user.name);
 
+                const data = {
+                    id: user.id,
+                    role: "customer"
+                }
+                const token = generateToken(data)
+                setCookie(token, res)
+
                 return "Login successful";
             } catch (error) {
                 console.error("Error logging in:", error.message);
                 throw new Error(error.message);
             }
-        }
+        },
+        setCustomerDetails: async (_, { id, name, address }, { req }) => {
+            authMiddleware(req)
+            try {
+                const response = await pool.query(
+                    `UPDATE customer SET name = $1, address = $2 WHERE id = $3`,
+                    [name, address, id]
+                );
+
+                if (response.rowCount === 0) {
+                    throw new Error("Update failed");
+                }
+
+                return "Update successful";
+            } catch (err) {
+                throw new Error("Error while updating: " + err.message);
+            }
+        },
+
+        addNewProduct: async (_, { product_name, description, price, merchant_id, image }) => {
+            try {
+                const result = await client.query(
+                    `INSERT INTO product (product_name, description, price, merchant_id, image) 
+                     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+                    [product_name, description, price ?? 0, merchant_id, image]
+                );
+
+                if (!result.rows.length) {
+                    throw new Error("Failed to add product.");
+                }
+                return "Product added successfully!";
+            }
+            catch (err) {
+                console.error("Error adding product:", error);
+                throw new Error("Error adding product.");
+            }
+
+        },
+
+
+
 
 
     },
@@ -82,12 +133,15 @@ const customerResolver = {
                 throw new Error("Failed to fetch random products");
             }
         },
-        getCustomerDetails: async (_, {id }) => {
+        getCustomerDetails: async (_, { id }, { req }) => {
             console.log(id, "  id");
-            
+            const authentication = authMiddleware(req)
+            // if(!authentication){
+
+            // }
             try {
                 const res = await pool.query(
-                    `select name , email , address from customer where id = $1`,[id]
+                    `select name , email , address from customer where id = $1`, [id]
                 );
 
                 if (res.rowCount === 0) {
@@ -102,6 +156,22 @@ const customerResolver = {
             }
 
         },
+        searchProducts: async (_, { search }) => {
+            try {
+                const query = `
+                    SELECT * FROM product
+                    WHERE LOWER(product_name) LIKE LOWER($1) 
+                    OR LOWER(description) LIKE LOWER($1)
+                `;
+                const values = [`%${search}%`];
+                const result = await pool.query(query, values);
+
+                return result.rows;
+            } catch (error) {
+                throw new Error("Error fetching products: " + error.message);
+            }
+        },
+
     }
 }
 
