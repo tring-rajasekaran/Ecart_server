@@ -9,6 +9,16 @@ const customerDef = gql`
         merchant_id : Int,
         image : String
     }
+    type CartProduct{
+        customer_id : Int,
+        product_id : Int,
+        quantity : Int,
+        product_name : String,
+        description : String ,
+        price : Int,
+        merchant_id : Int,
+        image : String,
+    } 
     type CustomerDetails{
         name : String,
         email : String,
@@ -19,6 +29,8 @@ const customerDef = gql`
         getRandomProducts:[product]
         getCustomerDetails(id:Int):[CustomerDetails]
         searchProducts(search: String!): [product]
+        getCartProducts(customer_id : Int) : [CartProduct]
+        getCartQuantity : Int
     }
 
     type  Mutation{
@@ -26,7 +38,9 @@ const customerDef = gql`
        login(email : String! , password : String! , login_type : String) : String
        setCustomerDetails(id : Int! ,name : String!,  address : String!) : String
        addNewProduct(product_name : String! , description : String! , price : Int , merchant_id : Int , image : String) : String
-
+       addToCart(product_id : Int!) : String,
+       deleteCartProduct(product_id : Int!) : String,
+       saveRecentSearch(SearchedProduct : String) : String,
     }
 `
 
