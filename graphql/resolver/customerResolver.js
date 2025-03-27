@@ -110,7 +110,7 @@ const customerResolver = {
 
         addToCart: async (_, { product_id }, { req }) => {
             const decoded = authMiddleware(req);
-            console.log(">>>>>>>>>>>>", decoded.id, product_id);
+            // console.log(">>>>>>>>>>>>", decoded.id, product_id);
 
             try {
                 const existingCart = await pool.query(
@@ -132,42 +132,46 @@ const customerResolver = {
                 return "Failed to add product to cart";
             }
         },
-        deleteCartProduct : async (_,{product_id} ,{req}) => {
+        deleteCartProduct: async (_, { product_id }, { req }) => {
             const decoded = authMiddleware(req);
             // console.log(product_id +" >>>>>>>>>>>>"+decoded);
-            
-            try{
+
+            try {
                 const removeCart = await pool.query(
-                    `delete from cart where product_id = $1 and customer_id = $2`,[product_id,decoded.id]
+                    `delete from cart where product_id = $1 and customer_id = $2`, [product_id, decoded.id]
                 )
 
-                if(removeCart.rowCount>0){
+                if (removeCart.rowCount > 0) {
                     return "cart deleted successfully"
                 }
-                else{
+                else {
                     return "failed to remove"
                 }
             }
-            catch(err){
+            catch (err) {
                 return "error while removing"
             }
         },
 
-        saveRecentSearch: async (_, { SearchedProduct }, { req }) => {
-            // const decoded = authMiddleware(req); 
-            try {
-                const setSearchedProduct = await pool.query(
-                    `INSERT INTO recent_searches (customer_id, searched_product_name) VALUES ($1, $2)`,
-                    [2, SearchedProduct]
-                );
-                return "Search saved successfully";
-            } catch (err) {
-                console.error("Error saving search:", err);
-                return "Error while saving search";
-            }
-        }
-        
+        setOrders: async (_, { orders }, { req }) => {
+            const decoded = authMiddleware(req);
 
+            try {
+                const res = orders.map(({ product_id, quantity }) => {
+                    return pool.query(
+                        `insert into orders (customer_id , product_id , quantity) values ($1 , $2 , $3)`, [decoded.id, product_id, quantity]
+                    )
+                });
+
+                await Promise.all(res);
+
+                return "ordered successfully"
+            }
+            catch (err) {
+                console.log(err, " error occured");
+                return "failed to order"
+            }
+        },
     },
 
     Query: {
@@ -213,66 +217,123 @@ const customerResolver = {
         },
         searchProducts: async (_, { search }, { req }) => {
             const decoded = authMiddleware(req);
-        
+
             try {
                 const query = `
                     SELECT * FROM product
-                    WHERE LOWER(product_name) LIKE LOWER($1) 
-                    OR LOWER(description) LIKE LOWER($1)
+                    WHERE (product_name) ILIKE ($1) 
+                    OR (description) ILIKE ($1)
                 `;
-                console.log(decoded.id + " <<<<<<<<");
-        
+                console.log(decoded.id + " <<<<<<<<", search);
+
                 const values = [`%${search}%`];
                 const result = await pool.query(query, values);
-        
+
                 // **Only save the search if results exist**
                 if (result.rows.length > 0) {
                     await pool.query(
                         `INSERT INTO recent_searches (customer_id, searched_product_name) 
-                         VALUES ($1, $2)`,
+                         VALUES ($1, $2)
+                         ON CONFLICT (customer_id, searched_product_name) DO NOTHING`,
                         [decoded.id, search]
                     );
                 }
-        
+
                 return result.rows;
             } catch (error) {
                 throw new Error("Error fetching products: " + error.message);
             }
         },
-        
-        getCartProducts: async (_, {},{ req }) => {
+
+        getCartProducts: async (_, { }, { req }) => {
             const decoded = authMiddleware(req);
-            console.log(decoded.id,"id>>>>");
-            
+            console.log(decoded.id, "id>>>>");
+
             try {
                 const gettingCart = await pool.query(
                     `select * from cart join product p on p.product_id = cart.product_id
-                    where customer_id = $1`,[decoded.id]
+                    where customer_id = $1`, [decoded.id]
                 );
-                if(gettingCart.rows.length>0){
+                if (gettingCart.rows.length > 0) {
                     console.log(gettingCart.rows);
-                    return gettingCart.rows   
+                    return gettingCart.rows
                 }
             }
-            catch(err){
+            catch (err) {
                 return [0];
             }
-            
+
         },
-        getCartQuantity : async(_,{},{req})=>{
+        getCartQuantity: async (_, { }, { req }) => {
             const decoded = authMiddleware(req);
-            try{
+            try {
                 const CartQuantity = await pool.query(
-                    `select count(*) as total_product from cart where customer_id =$1`,[decoded.id]
+                    `select count(*) as total_product from cart where customer_id =$1`, [decoded.id]
                 )
                 console.log(CartQuantity.rows[0]);
-                return parseInt( CartQuantity.rows[0].total_product)
+                return parseInt(CartQuantity.rows[0].total_product)
             }
-            catch(err){
+            catch (err) {
                 return err;
             }
 
+        },
+        getRecentSearch: async (_, { }, { req }) => {
+            const decoded = authMiddleware(req);
+
+            try {
+                const res = await pool.query(
+                    `select searched_product_name from recent_searches where customer_id = $1  AND LENGTH(searched_product_name) > 2 limit 5`, [decoded.id]
+                )
+                if (res.rows.length === 0) {
+                    console.log("error in fetching the recent search product ");
+
+                    return [];
+                }
+                console.log(res.rows, " result");
+                return res.rows
+            }
+            catch (err) {
+                console.log("error while fetching");
+
+                return [];
+            }
+        },
+
+        getOrdersProduct: async (_, { }, { req }) => {
+            const decoded = authMiddleware(req)
+        
+            try {
+                const res = await pool.query(
+                    `SELECT 
+                        o.product_id, 
+                        o.quantity,  
+                        p.product_name, 
+                        p.description, 
+                        p.price, 
+                        p.merchant_id,
+                        p.image,
+                        c.name as customer_name 
+                    FROM orders o
+                    JOIN product p ON p.product_id = o.product_id  
+                    JOIN customer c ON c.id = o.customer_id
+                    WHERE o.customer_id = $1;`, 
+                    [decoded.id] 
+                );
+        
+                if (res.rows.length > 0) {
+                    return res.rows; 
+                } else {
+                    console.log("No products found for this customer.");
+                    return []; 
+                }
+            } catch (err) { 
+                console.error(err, " error occurred");
+                return []; 
+            }
         }
+        
+
 
     }
 }
