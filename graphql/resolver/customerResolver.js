@@ -1,15 +1,24 @@
+const bcrypt = require("bcryptjs");
+const CryptoJS = require("crypto-js");
 const pool = require('../../db/dbconfig');
 const authMiddleware = require('../../middleware/authMiddleware.js');
 const generateToken = require('../../utils/generateJwtToken');
 const setCookie = require('../../utils/setCookie.js');
 const jwt = require('jsonwebtoken');
+const secretKey = "Rajasekaran3300";
+
+
 
 const customerResolver = {
     Mutation: {
         register: async (_, { name, email, password, register_type }) => {
+
             try {
                 console.log(">>>>>>", name, email, register_type);
-
+                const decryptedPassword = CryptoJS.AES.decrypt(password, secretKey).toString(CryptoJS.enc.Utf8);
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash(decryptedPassword, salt);
+                // console.log(hashedPassword +"hashedPassword ");
 
                 const tableName = register_type === "Merchant" ? "merchant" : "customer";
 
@@ -24,7 +33,7 @@ const customerResolver = {
 
                 const res = await pool.query(
                     `INSERT INTO ${tableName}(name, email, password) VALUES($1, $2, $3) RETURNING name`,
-                    [name, email, password]
+                    [name, email, hashedPassword]
                 );
 
                 console.log(res.rows[0]);
@@ -45,13 +54,18 @@ const customerResolver = {
                     [email]
                 );
 
+
+                const decryptedPassword = CryptoJS.AES.decrypt(password, secretKey).toString(CryptoJS.enc.Utf8);
+
                 if (responce.rowCount === 0) {
                     throw new Error("User not found");
                 }
 
                 const user = responce.rows[0];
-
-                if (user.password !== password) {
+                console.log(user.password +" passowrd ", decryptedPassword ," <<<<<<<<");
+                
+                const isMatch = await bcrypt.compare(decryptedPassword, user.password);
+                if (isMatch) {
                     throw new Error("Invalid credentials");
                 }
 
@@ -174,7 +188,7 @@ const customerResolver = {
         },
 
         updateMerchantProduct: async (_, { input }) => {
-            console.log("Received Input:", input);  
+            console.log("Received Input:", input);
             if (!input.product_id) {
                 throw new Error("Product ID is missing!");
             }
@@ -183,42 +197,83 @@ const customerResolver = {
                     `UPDATE product SET product_name = $1, description = $2, price = $3, price = $4 WHERE product_id = $5 `,
                     [input.product_name, input.description, input.price, input.image, input.product_id]
                 );
-                return "updated successfully";  
+                return "updated successfully";
             } catch (err) {
                 console.error("DB Error:", err);
                 throw new Error("Database update failed");
             }
         },
-        addMerchantProduct: async (_ ,{input},{req}) =>{
+        addMerchantProduct: async (_, { input }, { req }) => {
 
             const decoded = authMiddleware(req);
-            console.log("added product ",input );
-            try{
+            console.log("added product ", input);
+            try {
                 const res = await pool.query(
                     `insert into product(product_name , description ,price , image , merchant_id)
-                    values($1,$2,$3,$4,$5)`,[input.product_name, input.description, input.price, input.image, decoded.id]
+                    values($1,$2,$3,$4,$5)`, [input.product_name, input.description, input.price, input.image, decoded.id]
                 )
                 return "Product Added successfully"
             }
-            catch(err){
-                console.log("failed to add",err);
+            catch (err) {
+                console.log("failed to add", err);
                 throw new Error("Databse add failed");
             }
+
+        },
+
+        deleteMerchantProduct: async (_, { id }, { req }) => {
+
+            const decoded = authMiddleware(req);
+            try {
+                const res = await pool.query(
+                    `delete from product where product_id = $1 and merchant_id = $2`, [id, decoded.id]
+                );
+                if (res.rowCount > 0) {
+                    return "product deleted successfully"
+                }
+                return "failed to delete product"
+
+            }
+            catch (err) {
+                throw new Error("Failed")
+            }
+        },
+
+        changeOrderStatus: async (_, { statusofOrder, product_id }, { req }) => {
+            console.log(statusofOrder , " <<<<<<<<<<< ", product_id );
             
-        }
+            const decoded = authMiddleware(req); 
         
+            try {
+                const res = await pool.query(
+                    `UPDATE orders 
+                     SET order_status = $1 
+                     WHERE product_id = $2 
+                     RETURNING *;`,
+                    [statusofOrder, product_id]
+                );
+        
+                if (res.rowCount > 0) {
+                    return `Order status updated to '${statusofOrder}' successfully.`;
+                } else {
+                    return "Failed to update order status. Order not found.";
+                }
+            } catch (err) {
+                console.error("Error updating order status:", err);
+                return "Internal server error.";
+            }
+        },
 
-        // deleteMerchantProduct : async(_ ,{})=>{
-        //     try{
-        //         const res = await pool.query(
-        //             `delete from product where product_id = $1`,[product_id]
-        //         );
-
-        //     }
-        //     catch(err){
-
-        //     }
-        // }
+        logout : async(_ , {},{res})=>{
+            try{
+                await res.clearCookie("jwt", { path: "/", httpOnly: true, sameSite: "Lax" });
+                return " Logout Successfull";
+            }
+            catch(err){
+                throw new Error("Failed to log out",err);
+            }
+        }   
+        
     },
 
     Query: {
@@ -239,9 +294,9 @@ const customerResolver = {
                 throw new Error("Failed to fetch random products");
             }
         },
-        getCustomerDetails: async (_, {}, { req }) => {
+        getCustomerDetails: async (_, { }, { req }) => {
             const decoded = authMiddleware(req)
-            console.log("Decoded ID:", decoded.id);
+            // console.log("Decoded ID:", decoded.id);
 
             try {
                 const res = await pool.query(
@@ -251,8 +306,8 @@ const customerResolver = {
                 if (res.rowCount === 0) {
                     throw new Error("No user Details Found");
                 }
-                console.log(res.rows +" result");
-                
+                console.log(res.rows + " result");
+
                 return res.rows;
             }
             catch (err) {
@@ -301,7 +356,7 @@ const customerResolver = {
                     where customer_id = $1`, [decoded.id]
                 );
                 if (gettingCart.rows.length > 0) {
-                    console.log(gettingCart.rows);
+                    // console.log(gettingCart.rows);
                     return gettingCart.rows
                 }
             }
@@ -348,7 +403,7 @@ const customerResolver = {
 
         getOrdersProduct: async (_, { }, { req }) => {
             const decoded = authMiddleware(req)
-        
+
             try {
                 const res = await pool.query(
                     `SELECT 
@@ -359,49 +414,70 @@ const customerResolver = {
                         p.price, 
                         p.merchant_id,
                         p.image,
-                        c.name as customer_name 
+                        c.name as customer_name,
+                        o.order_status as order_status
                     FROM orders o
                     JOIN product p ON p.product_id = o.product_id  
                     JOIN customer c ON c.id = o.customer_id
-                    WHERE o.customer_id = $1;`, 
-                    [decoded.id] 
+                    WHERE o.customer_id = $1;`,
+                    [decoded.id]
                 );
-        
+
                 if (res.rows.length > 0) {
-                    return res.rows; 
+                    return res.rows;
                 } else {
                     console.log("No products found for this customer.");
-                    return []; 
+                    return [];
                 }
-            } catch (err) { 
+            } catch (err) {
                 console.error(err, " error occurred");
-                return []; 
+                return [];
             }
         },
 
         //merchant functionality 
 
-        getMerchantProduct : async(_, {} , { req}) =>{
+        getMerchantProduct: async (_, { }, { req }) => {
             const decoded = authMiddleware(req);
 
-            try{
+            try {
                 const res = await pool.query(
-                    `select * from product where merchant_id = $1`,[decoded.id]
+                    `select * from product where merchant_id = $1`, [decoded.id]
                 )
-                if(res.rows.length ===0 ){
+                if (res.rows.length === 0) {
                     return res.rows;
                 }
                 console.log("merchant product fetched successfully");
                 return res.rows;
             }
-            catch(err){
+            catch (err) {
                 console.log(err.message);
                 return []
+            }
+        },
+
+        getMerchantOrders: async (_, { }, { req }) => {
+            const decoded = authMiddleware(req);
+
+            try {
+                const res = await pool.query(
+                    `select o.*,p.*,customer.* from product p
+                    join orders o on o.product_id = p.product_id 
+                    join customer on o.customer_id = customer.id
+                    where merchant_id = $1`,[decoded.id]
+                )
+                if(res.rows.length>0){
+                    return res.rows;
+                }
+            }
+            catch(err){
+                console.log(err ,"error occured ");
+                
             }
         }
 
 
-        
+
 
 
     }

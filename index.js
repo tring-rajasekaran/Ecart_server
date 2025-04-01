@@ -19,12 +19,43 @@ app.use(cors({
 app.use(express.json())
 app.use(cookieparser())
 
+const context = async ({ req,res }) => {
+    try {
+        const token = req?.cookies?.jwt  
+        const operationName = req?.body?.operationName  
+        console.log(operationName,"dgfhj",token);
+        
+
+
+      
+
+        // // Operations that do not require authentication
+        const publicOperations = ["login", "register", "logout"]
+
+        if (publicOperations.includes(operationName)) {
+            return { req ,res}
+        }
+
+        if (!token) {
+            throw new Error("Unauthorized: No token found in cookies")
+        }
+
+        return {req,res}
+
+        // const decoded = jwt.verify(token, process.env.JWT_SECRET)  // Verify JWT
+        // return { req, user: decoded }  // Attach user to context
+
+    } catch (error) {
+        throw new Error("Unauthorized: Invalid token")
+    }
+}
+
 const serverStart = async()=>{
     try{        
         const server = new ApolloServer({
             typeDefs,
             resolvers,
-            context:({req,res})=>({req,res})
+            context
         })
 
         await server.start()

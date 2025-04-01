@@ -35,7 +35,21 @@ const customerDef = gql`
         merchant_id : Int,
         image : String,
         quantity : Int,
-        customer_name : String
+        customer_name : String,
+        order_status : String
+    }
+    type OrderDetails{
+        product_id : Int,
+        customer_id : Int,
+        quantity : Int,
+        product_name : String,
+        description : String,
+        price : Int,
+        image : String,
+        name : String,
+        email : String,
+        address : String,
+        order_status : String
     }
 
     type Query{
@@ -47,6 +61,7 @@ const customerDef = gql`
         getRecentSearch: [SearchedProduct]
         getOrdersProduct : [OrderedProduct]
         getMerchantProduct : [product]
+        getMerchantOrders : [OrderDetails]
     }
     input OrderInput {
         product_id: Int!
@@ -71,6 +86,9 @@ const customerDef = gql`
        setOrders(orders: [OrderInput!]!): String,
        updateMerchantProduct(input :EditedProduct!) : String
        addMerchantProduct(input : EditedProduct!) : String
+       deleteMerchantProduct(product_id: Int!) : String
+       changeOrderStatus(statusofOrder: String!, product_id: Int!): String
+       logout : String
     }
 `
 
