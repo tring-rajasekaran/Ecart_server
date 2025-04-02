@@ -188,13 +188,15 @@ const customerResolver = {
         },
 
         updateMerchantProduct: async (_, { input }) => {
-            console.log("Received Input:", input);
+            // console.log("Received Input:<<<<<<<<<<<<<<<<<<<<<<<<<<<", input);
             if (!input.product_id) {
                 throw new Error("Product ID is missing!");
             }
             try {
+                console.log(">>>>>>>>>>>>>>>",input);
+                
                 const res = await pool.query(
-                    `UPDATE product SET product_name = $1, description = $2, price = $3, price = $4 WHERE product_id = $5 `,
+                    `UPDATE product SET product_name = $1, description = $2, price = $3 , image=$4  WHERE product_id = $5 `,
                     [input.product_name, input.description, input.price, input.image, input.product_id]
                 );
                 return "updated successfully";
@@ -240,7 +242,7 @@ const customerResolver = {
         },
 
         changeOrderStatus: async (_, { statusofOrder, product_id }, { req }) => {
-            console.log(statusofOrder , " <<<<<<<<<<< ", product_id );
+            // console.log(statusofOrder , " <<<<<<<<<<< ", product_id );
             
             const decoded = authMiddleware(req); 
         
@@ -366,13 +368,19 @@ const customerResolver = {
 
         },
         getCartQuantity: async (_, { }, { req }) => {
+            console.log("in get cart quantity<<<<<<<<<<<<<<<<<<<<<<<<<<,");
+            
             const decoded = authMiddleware(req);
+            console.log(decoded.id +" id");
+            
             try {
                 const CartQuantity = await pool.query(
                     `select count(*) as total_product from cart where customer_id =$1`, [decoded.id]
                 )
-                console.log(CartQuantity.rows[0]);
+                
+                console.log(CartQuantity.rows[0].total_product +" total product");
                 return parseInt(CartQuantity.rows[0].total_product)
+                
             }
             catch (err) {
                 return err;

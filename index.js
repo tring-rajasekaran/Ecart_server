@@ -19,18 +19,14 @@ app.use(cors({
 app.use(express.json())
 app.use(cookieparser())
 
+
 const context = async ({ req,res }) => {
     try {
         const token = req?.cookies?.jwt  
         const operationName = req?.body?.operationName  
-        console.log(operationName,"dgfhj",token);
+        // console.log(operationName,"dgfhj",token);
         
-
-
-      
-
-        // // Operations that do not require authentication
-        const publicOperations = ["login", "register", "logout"]
+        const publicOperations = ["login", "register", "logout","getRandomProducts"]
 
         if (publicOperations.includes(operationName)) {
             return { req ,res}
