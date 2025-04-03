@@ -4,10 +4,10 @@ require('dotenv').config()
 const SECRET_KEY = process.env.JWT_SECRET_KEY;
 
 const authMiddleware = (req)=>{
-    console.log(req?.headers?.cookie);
+    // console.log(req?.headers?.cookie);
     
     const token = req?.headers?.cookie?.split("=")[2];
-    console.log(token," tokern");
+    // console.log(token," tokern");
     
     if(!token){
         throw new Error("Not authorized")

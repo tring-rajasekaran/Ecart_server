@@ -46,7 +46,7 @@ const customerResolver = {
         },
         login: async (_, { email, password, login_type }, { res }) => {
             try {
-                console.log(">>>>>", email, password, login_type);
+                // console.log(">>>>>", email, password, login_type);
 
                 const tableName = login_type === "Merchant" ? "merchant" : "customer";
                 const responce = await pool.query(
@@ -69,7 +69,7 @@ const customerResolver = {
                     throw new Error("Invalid credentials");
                 }
 
-                console.log("User logged in successfully:", user.name);
+                // console.log("User logged in successfully:", user.name);
 
                 const data = {
                     id: user.id,
@@ -124,8 +124,9 @@ const customerResolver = {
 
         addToCart: async (_, { product_id }, { req }) => {
             const decoded = authMiddleware(req);
-            // console.log(">>>>>>>>>>>>", decoded.id, product_id);
 
+            console.log(product_id ," product_id ");
+            
             try {
                 const existingCart = await pool.query(
                     `SELECT 1 FROM cart WHERE customer_id = $1 AND product_id = $2`,
@@ -193,7 +194,7 @@ const customerResolver = {
                 throw new Error("Product ID is missing!");
             }
             try {
-                console.log(">>>>>>>>>>>>>>>",input);
+                // console.log(">>>>>>>>>>>>>>>",input);
                 
                 const res = await pool.query(
                     `UPDATE product SET product_name = $1, description = $2, price = $3 , image=$4  WHERE product_id = $5 `,
@@ -208,7 +209,7 @@ const customerResolver = {
         addMerchantProduct: async (_, { input }, { req }) => {
 
             const decoded = authMiddleware(req);
-            console.log("added product ", input);
+            // console.log("added product ", input);
             try {
                 const res = await pool.query(
                     `insert into product(product_name , description ,price , image , merchant_id)
@@ -308,7 +309,7 @@ const customerResolver = {
                 if (res.rowCount === 0) {
                     throw new Error("No user Details Found");
                 }
-                console.log(res.rows + " result");
+                // console.log(res.rows + " result");
 
                 return res.rows;
             }
@@ -368,7 +369,7 @@ const customerResolver = {
 
         },
         getCartQuantity: async (_, { }, { req }) => {
-            console.log("in get cart quantity<<<<<<<<<<<<<<<<<<<<<<<<<<,");
+            // console.log("in get cart quantity<<<<<<<<<<<<<<<<<<<<<<<<<<,");
             
             const decoded = authMiddleware(req);
             console.log(decoded.id +" id");
@@ -378,7 +379,7 @@ const customerResolver = {
                     `select count(*) as total_product from cart where customer_id =$1`, [decoded.id]
                 )
                 
-                console.log(CartQuantity.rows[0].total_product +" total product");
+                // console.log(CartQuantity.rows[0].total_product +" total product");
                 return parseInt(CartQuantity.rows[0].total_product)
                 
             }
