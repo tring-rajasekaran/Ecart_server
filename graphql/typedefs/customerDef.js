@@ -60,7 +60,7 @@ const customerDef = gql`
         getCartQuantity : Int
         getRecentSearch: [SearchedProduct]
         getOrdersProduct : [OrderedProduct]
-        getMerchantProduct: [product]
+        getMerchantProduct(page : Int!): [product]
         getMerchantOrders : [OrderDetails]
     }
     input OrderInput {

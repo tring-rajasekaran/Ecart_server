@@ -26,7 +26,7 @@ const context = async ({ req,res }) => {
         const operationName = req?.body?.operationName  
         // console.log(operationName,"dgfhj",token);
         
-        const publicOperations = ["login", "register", "logout","getRandomProducts"]
+        const publicOperations = ["login", "register", "logout","getRandomProducts","getMerchantProduct"]
 
         if (publicOperations.includes(operationName)) {
             return { req ,res}

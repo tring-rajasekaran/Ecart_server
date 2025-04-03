@@ -46,44 +46,54 @@ const customerResolver = {
         },
         login: async (_, { email, password, login_type }, { res }) => {
             try {
-                // console.log(">>>>>", email, password, login_type);
-
                 const tableName = login_type === "Merchant" ? "merchant" : "customer";
-                const responce = await pool.query(
+                const response = await pool.query(
                     `SELECT * FROM ${tableName} WHERE email = $1`,
                     [email]
                 );
+        
+                if (response.rowCount === 0) {
+                    throw new Error("User not found");
+                }
+        
+                const user = response.rows[0];
+                
+
+                // const decryptedPassword1 = CryptoJS.AES.decrypt(password, secretKey).toString(CryptoJS.enc.Utf8);
+                // const salt = await bcrypt.genSalt(10);
+                // const hashedPassword = await bcrypt.hash(decryptedPassword1, salt);
+                // console.log(hashedPassword +" hashedpassowrd ");
+                // return;
+                
+                // Decrypt AES password from frontend
+
 
 
                 const decryptedPassword = CryptoJS.AES.decrypt(password, secretKey).toString(CryptoJS.enc.Utf8);
-
-                if (responce.rowCount === 0) {
-                    throw new Error("User not found");
-                }
-
-                const user = responce.rows[0];
-                console.log(user.password +" passowrd ", decryptedPassword ," <<<<<<<<");
-                
+                console.log("Decrypted Password:", decryptedPassword);
+                console.log("Stored Hashed Password:", user.password);
+        
+                // 🔑 Compare decrypted password with hashed password in database
                 const isMatch = await bcrypt.compare(decryptedPassword, user.password);
+        
                 if (isMatch) {
+                    const data = {
+                        id: user.id,
+                        role: login_type
+                    };
+                    const token = generateToken(data);
+                    setCookie(token, res);
+        
+                    return `Login successful ${user.name}`;
+                } else {
                     throw new Error("Invalid credentials");
                 }
-
-                // console.log("User logged in successfully:", user.name);
-
-                const data = {
-                    id: user.id,
-                    role: "customer"
-                }
-                const token = generateToken(data)
-                setCookie(token, res)
-
-                return "Login successful";
             } catch (error) {
                 console.error("Error logging in:", error.message);
                 throw new Error(error.message);
             }
         },
+        
         setCustomerDetails: async (_, { name, address }, { req }) => {
             const decoded = authMiddleware(req)
             try {
@@ -446,25 +456,34 @@ const customerResolver = {
 
         //merchant functionality 
 
-        getMerchantProduct: async (_, { }, { req }) => {
+        getMerchantProduct: async (_, { page }, { req }) => {
             const decoded = authMiddleware(req);
-
+          
             try {
-                const res = await pool.query(
-                    `select * from product where merchant_id = $1`, [decoded.id]
-                )
-                if (res.rows.length === 0) {
-                    return res.rows;
-                }
-                console.log("merchant product fetched successfully");
+              const limit = 8;
+              
+             
+              const offset = (page - 1) * limit;
+          
+              
+              const res = await pool.query(
+                `SELECT * FROM product WHERE merchant_id = $1 LIMIT $2 OFFSET $3`, 
+                [decoded.id, limit, offset]
+              );
+          
+              if (res.rows.length === 0) {
+                console.log("No products found for the merchant.");
                 return res.rows;
+              }
+          
+              console.log("Merchant products fetched successfully.");
+              return res.rows;
+            } catch (err) {
+              console.log(err.message);
+              return [];
             }
-            catch (err) {
-                console.log(err.message);
-                return []
-            }
-        },
-
+          },
+          
         getMerchantOrders: async (_, { }, { req }) => {
             const decoded = authMiddleware(req);
 

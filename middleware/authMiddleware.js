@@ -6,7 +6,7 @@ const SECRET_KEY = process.env.JWT_SECRET_KEY;
 const authMiddleware = (req)=>{
     // console.log(req?.headers?.cookie);
     
-    const token = req?.headers?.cookie?.split("=")[2];
+    const token = req?.headers?.cookie?.split("=")[1];
     // console.log(token," tokern");
     
     if(!token){
