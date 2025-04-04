@@ -180,8 +180,16 @@ const customerResolver = {
 
         setOrders: async (_, { orders }, { req }) => {
             const decoded = authMiddleware(req);
-
             try {
+                const checkAddress = await pool.query(`select address from customer where id = $1 and address is not null`,[decoded.id])
+                console.log(checkAddress.rowCount +" checkAddress");
+                
+                if(!checkAddress.rowCount ){
+                    console.log("in log");
+                    
+                    throw new Error("no address");
+                }
+
                 const res = orders.map(({ product_id, quantity }) => {
                     return pool.query(
                         `insert into orders (customer_id , product_id , quantity) values ($1 , $2 , $3)`, [decoded.id, product_id, quantity]
@@ -194,7 +202,7 @@ const customerResolver = {
             }
             catch (err) {
                 console.log(err, " error occured");
-                return "failed to order"
+                throw err
             }
         },
 
@@ -234,12 +242,14 @@ const customerResolver = {
 
         },
 
-        deleteMerchantProduct: async (_, { id }, { req }) => {
+        deleteMerchantProduct: async (_, { product_id }, { req }) => {
+            console.log( product_id,"to be deleting product");
+            
 
             const decoded = authMiddleware(req);
             try {
                 const res = await pool.query(
-                    `delete from product where product_id = $1 and merchant_id = $2`, [id, decoded.id]
+                    `delete from product where product_id = $1 and merchant_id = $2`, [product_id, decoded.id]
                 );
                 if (res.rowCount > 0) {
                     return "product deleted successfully"
