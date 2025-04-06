@@ -7,7 +7,8 @@ const customerDef = gql`
         description : String ,
         price : Int,
         merchant_id : Int,
-        image : String
+        image : String,
+        offer : Int,
     }
     type CartProduct{
         customer_id : Int,
@@ -18,6 +19,7 @@ const customerDef = gql`
         price : Int,
         merchant_id : Int,
         image : String,
+        offer:Int,
     } 
     type CustomerDetails{
         name : String,
@@ -36,7 +38,8 @@ const customerDef = gql`
         image : String,
         quantity : Int,
         customer_name : String,
-        order_status : String
+        order_status : String,
+        offer : Int
     }
     type OrderDetails{
         product_id : Int,
@@ -73,7 +76,8 @@ const customerDef = gql`
         description : String ,
         price : Int,
         merchant_id : Int,
-        image : String
+        image : String,
+        offer : Int
     }
 
     type  Mutation{

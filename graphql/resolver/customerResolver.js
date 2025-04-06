@@ -207,7 +207,7 @@ const customerResolver = {
         },
 
         updateMerchantProduct: async (_, { input }) => {
-            // console.log("Received Input:<<<<<<<<<<<<<<<<<<<<<<<<<<<", input);
+            console.log("Received Input:<<<<<<<<<<<<<<<<<<<<<<<<<<<", input);
             if (!input.product_id) {
                 throw new Error("Product ID is missing!");
             }
@@ -215,8 +215,8 @@ const customerResolver = {
                 // console.log(">>>>>>>>>>>>>>>",input);
                 
                 const res = await pool.query(
-                    `UPDATE product SET product_name = $1, description = $2, price = $3 , image=$4  WHERE product_id = $5 `,
-                    [input.product_name, input.description, input.price, input.image, input.product_id]
+                    `UPDATE product SET product_name = $1, description = $2, price = $3 , image=$4  , offer = $5 WHERE product_id = $6 `,
+                    [input.product_name, input.description, input.price, input.image, input.offer, input.product_id]
                 );
                 return "updated successfully";
             } catch (err) {
@@ -230,8 +230,8 @@ const customerResolver = {
             // console.log("added product ", input);
             try {
                 const res = await pool.query(
-                    `insert into product(product_name , description ,price , image , merchant_id)
-                    values($1,$2,$3,$4,$5)`, [input.product_name, input.description, input.price, input.image, decoded.id]
+                    `insert into product(product_name , description ,price , image , merchant_id, offer)
+                    values($1,$2,$3,$4,$5,$6)`, [input.product_name, input.description, input.price, input.image, decoded.id,input.offer]
                 )
                 return "Product Added successfully"
             }
@@ -444,7 +444,8 @@ const customerResolver = {
                         p.merchant_id,
                         p.image,
                         c.name as customer_name,
-                        o.order_status as order_status
+                        o.order_status as order_status,
+                        p.offer
                     FROM orders o
                     JOIN product p ON p.product_id = o.product_id  
                     JOIN customer c ON c.id = o.customer_id
