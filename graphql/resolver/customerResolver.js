@@ -330,7 +330,8 @@ const customerResolver = {
                     throw new Error("No user Details Found");
                 }
                 // console.log(res.rows + " result");
-
+                // console.log(res.rows.name ," result ");
+                
                 return res.rows;
             }
             catch (err) {

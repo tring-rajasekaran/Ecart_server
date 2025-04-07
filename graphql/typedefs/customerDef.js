@@ -52,7 +52,8 @@ const customerDef = gql`
         name : String,
         email : String,
         address : String,
-        order_status : String
+        order_status : String,
+        offer:Int
     }
 
     type Query{
